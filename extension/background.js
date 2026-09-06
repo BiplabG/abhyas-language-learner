@@ -1841,7 +1841,13 @@
       lists: [{ id: crypto.randomUUID(), name: "My first words" }],
       words: [],
       reviews: [],
-      settings: { reminders: false, time: "19:00" }
+      settings: {
+        reminders: false,
+        time: "19:00",
+        reminderTimes: ["19:00"],
+        practiceSize: 10,
+        practiceListId: ""
+      }
     };
   }
   function hydrate(card) {
@@ -2078,8 +2084,17 @@ ${validateSyncToken(token)}`
       );
     }
     if (!response.ok) {
+      let detail = "";
+      try {
+        const raw = await response.text();
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          detail = [parsed.code, parsed.message, parsed.hint].filter(Boolean).join(": ");
+        }
+      } catch {
+      }
       const e = new Error(
-        response.status === 401 || response.status === 403 ? "Supabase access denied. Check the publishable key and run the latest SQL setup." : `Supabase request failed (${response.status}). Check the SQL setup and project availability.`
+        response.status === 401 || response.status === 403 ? "Supabase access denied. Check the publishable key and run the latest SQL setup." : response.status === 404 ? `Supabase sync function was not found (404). Run the latest supabase/setup.sql in this project's SQL Editor${detail ? `: ${detail}` : "."}` : `Supabase request failed (${response.status})${detail ? `: ${detail}` : ". Check the SQL setup and project availability."}`
       );
       e.status = response.status;
       throw e;
@@ -2265,36 +2280,82 @@ ${validateSyncToken(token)}`
   }
 
   // src/reminders.js
+  function reminderTimes(settings) {
+    const times = Array.isArray(settings.reminderTimes) ? settings.reminderTimes : [settings.time || "19:00"];
+    const valid = [
+      ...new Set(times.filter((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)))
+    ].sort();
+    return valid.length ? valid : ["19:00"];
+  }
+  function nextScheduledReminder(settings, now = /* @__PURE__ */ new Date()) {
+    const times = reminderTimes(settings);
+    return Math.min(...times.map((time) => nextReminder(time, now)));
+  }
+  async function setReminderBadge(api, active) {
+    if (!api.browserAction) return;
+    await api.browserAction.setBadgeBackgroundColor({ color: "#a45c4f" });
+    await api.browserAction.setBadgeText({ text: active ? "!" : "" });
+    await api.browserAction.setTitle({
+      title: active ? "abhyas - language learner: practice reminder" : "abhyas - language learner"
+    });
+  }
   async function notifyPractice(api, data, test = false, now = /* @__PURE__ */ new Date()) {
     const due = data.words.filter((w) => new Date(w.card.due) <= now).length;
-    return api.notifications.create(test ? "practice-test" : "practice", {
-      type: "basic",
-      title: "abhyas - language learner",
-      message: test ? "Your browser notification test. Click to open Practice." : due ? `Time to practice: ${due} word${due === 1 ? " is" : "s are"} ready to review.` : "Time for your daily practice. You\u2019re caught up \u2014 collect a few new words!"
+    const id = test ? "practice-test" : "practice";
+    console.info("[abhyas reminders] Creating notification", {
+      id,
+      test,
+      dueWords: due,
+      at: now.toISOString()
     });
+    try {
+      const created = await api.notifications.create(id, {
+        type: "basic",
+        title: "abhyas - language learner",
+        message: test ? "Your browser notification test. Click to open Practice." : due ? `Time to practice: ${due} word${due === 1 ? " is" : "s are"} ready to review.` : "Time for your daily practice. You\u2019re caught up \u2014 collect a few new words!"
+      });
+      console.info("[abhyas reminders] Notification API request succeeded", {
+        id,
+        created
+      });
+      return created;
+    } catch (error) {
+      console.error("[abhyas reminders] Notification API request failed", {
+        id,
+        message: error.message || String(error)
+      });
+      throw error;
+    }
   }
   async function scheduleReminder(api, data, now = /* @__PURE__ */ new Date()) {
     await api.alarms.clear("practice");
     if (!data.settings.reminders) {
       delete data.settings.reminderAt;
+      await setReminderBadge(api, false);
       return;
     }
+    data.settings.reminderTimes = reminderTimes(data.settings);
+    data.settings.time = data.settings.reminderTimes[0];
     if (!Number.isFinite(data.settings.reminderAt))
-      data.settings.reminderAt = nextReminder(data.settings.time, now);
+      data.settings.reminderAt = nextScheduledReminder(data.settings, now);
     await api.alarms.create("practice", { when: data.settings.reminderAt });
   }
   async function deliverReminder(api, data, now = /* @__PURE__ */ new Date()) {
     if (!data.settings.reminders) return;
     try {
       await notifyPractice(api, data, false, now);
+      await setReminderBadge(api, true);
       delete data.settings.notificationError;
       data.settings.lastReminderAt = now.toISOString();
     } catch (error) {
       data.settings.notificationError = error.message || "Firefox could not create the notification.";
     } finally {
-      data.settings.reminderAt = nextReminder(data.settings.time, now);
+      data.settings.reminderAt = nextScheduledReminder(data.settings, now);
       await scheduleReminder(api, data, now);
     }
+  }
+  async function acknowledgeReminder(api) {
+    await setReminderBadge(api, false);
   }
   async function restoreReminder(api, data, now = /* @__PURE__ */ new Date()) {
     if (data.settings.reminders && Number.isFinite(data.settings.reminderAt) && data.settings.reminderAt <= now.getTime())
@@ -2341,6 +2402,7 @@ ${validateSyncToken(token)}`
         imported = importRows(data, message);
         break;
       case "get":
+        await acknowledgeReminder(browser);
         break;
       case "saveWord":
         addWord(data, message.word);
@@ -2367,6 +2429,7 @@ ${validateSyncToken(token)}`
         reviewWord(data, message.id, message.rating, message.expectedReps);
         break;
       case "testNotification":
+        console.info("[abhyas reminders] Test notification requested");
         await notifyPractice(browser, data, true);
         break;
       case "practiceSize":
@@ -2374,14 +2437,21 @@ ${validateSyncToken(token)}`
           throw new Error("Choose 1 to 100 words per session.");
         data.settings.practiceSize = message.size;
         break;
+      case "practiceList":
+        if (message.listId && !data.lists.some((list) => list.id === message.listId))
+          throw new Error("Choose an existing word list.");
+        data.settings.practiceListId = message.listId || "";
+        break;
       case "settings":
-        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(message.time))
-          throw new Error("Choose a valid time.");
+        if (!Array.isArray(message.times) || !message.times.length || !message.times.every((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)))
+          throw new Error("Choose at least one valid reminder time.");
+        const times = [...new Set(message.times)].sort();
         data.settings = {
           ...data.settings,
           reminders: !!message.reminders,
-          time: message.time,
-          reminderAt: nextReminder(message.time)
+          time: times[0],
+          reminderTimes: times,
+          reminderAt: nextScheduledReminder({ reminderTimes: times })
         };
         await scheduleReminder(browser, data);
         break;

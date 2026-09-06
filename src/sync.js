@@ -117,10 +117,24 @@ async function request(config, path, body) {
     );
   }
   if (!response.ok) {
+    let detail = "";
+    try {
+      const raw = await response.text();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        detail = [parsed.code, parsed.message, parsed.hint]
+          .filter(Boolean)
+          .join(": ");
+      }
+    } catch {
+      // Keep the stable fallback below for non-JSON or unreadable responses.
+    }
     const e = new Error(
       response.status === 401 || response.status === 403
         ? "Supabase access denied. Check the publishable key and run the latest SQL setup."
-        : `Supabase request failed (${response.status}). Check the SQL setup and project availability.`,
+        : response.status === 404
+          ? `Supabase sync function was not found (404). Run the latest supabase/setup.sql in this project's SQL Editor${detail ? `: ${detail}` : "."}`
+          : `Supabase request failed (${response.status})${detail ? `: ${detail}` : ". Check the SQL setup and project availability."}`,
     );
     e.status = response.status;
     throw e;

@@ -51,7 +51,12 @@ function harness() {
   return { store, api, service: createSyncService(api) };
 }
 function response(body, status = 200) {
-  return { ok: status === 200, status, json: async () => body };
+  return {
+    ok: status === 200,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  };
 }
 test("versions are monotonic and ties resolve deterministically", () => {
   const a = nextRevision({ revision: 1000 }, 500);
@@ -179,6 +184,24 @@ test("invalid remote or network error never replaces local data", async (t) => {
   };
   await service.run();
   assert.equal(JSON.stringify(store.data), before);
+});
+test("a missing RPC reports Supabase's diagnostic without replacing local data", async (t) => {
+  const { store, service } = harness(),
+    before = JSON.stringify(store.data);
+  t.mock.method(globalThis, "fetch", async () =>
+    response(
+      {
+        code: "PGRST202",
+        message:
+          "Could not find the function public.abhyas_token_exchange in the schema cache",
+      },
+      404,
+    ),
+  );
+  const result = await service.run();
+  assert.equal(JSON.stringify(store.data), before);
+  assert.match(result.syncStatus.message, /PGRST202/);
+  assert.match(result.syncStatus.message, /supabase\/setup\.sql/);
 });
 test("disconnect clears saved project details and token but keeps vocabulary", async () => {
   const { store, service } = harness();

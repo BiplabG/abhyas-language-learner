@@ -6,6 +6,7 @@ import {
   deliverReminder,
   restoreReminder,
   notifyPractice,
+  nextScheduledReminder,
 } from "../src/reminders.js";
 function fixture() {
   const calls = { alarms: [], notifications: [] };
@@ -65,4 +66,16 @@ test("disabled reminders stop scheduling; a test is independent of preferences",
   assert.equal(calls.alarms.length, 0);
   await notifyPractice(api, data, true);
   assert.equal(calls.notifications[0].id, "practice-test");
+});
+test("multiple daily times schedule the nearest future reminder", async () => {
+  const { api, data, calls } = fixture();
+  data.settings.reminderTimes = ["09:00", "19:00"];
+  const now = new Date(2026, 8, 6, 10);
+  data.settings.reminderAt = nextScheduledReminder(data.settings, now);
+  await scheduleReminder(api, data, now);
+  assert.equal(new Date(data.settings.reminderAt).getHours(), 19);
+  assert.equal(calls.alarms.at(-1).when, data.settings.reminderAt);
+  await deliverReminder(api, data, new Date(2026, 8, 6, 19));
+  assert.equal(new Date(data.settings.reminderAt).getDate(), 7);
+  assert.equal(new Date(data.settings.reminderAt).getHours(), 9);
 });

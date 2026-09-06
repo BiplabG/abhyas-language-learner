@@ -4,9 +4,11 @@ import {
   scheduleReminder,
   deliverReminder,
   restoreReminder,
+  acknowledgeReminder,
+  nextScheduledReminder,
 } from "./reminders.js";
 import { importBackup, importRows } from "./import-data.js";
-import { initialState, addWord, reviewWord, nextReminder } from "./model.js";
+import { initialState, addWord, reviewWord } from "./model.js";
 let queue = Promise.resolve();
 const sync = createSyncService(browser);
 const dataActions = new Set([
@@ -45,6 +47,7 @@ async function handle(message) {
       imported = importRows(data, message);
       break;
     case "get":
+      await acknowledgeReminder(browser);
       break;
     case "saveWord":
       addWord(data, message.word);
@@ -71,6 +74,7 @@ async function handle(message) {
       reviewWord(data, message.id, message.rating, message.expectedReps);
       break;
     case "testNotification":
+      console.info("[abhyas reminders] Test notification requested");
       await notifyPractice(browser, data, true);
       break;
     case "practiceSize":
@@ -82,14 +86,28 @@ async function handle(message) {
         throw new Error("Choose 1 to 100 words per session.");
       data.settings.practiceSize = message.size;
       break;
+    case "practiceList":
+      if (
+        message.listId &&
+        !data.lists.some((list) => list.id === message.listId)
+      )
+        throw new Error("Choose an existing word list.");
+      data.settings.practiceListId = message.listId || "";
+      break;
     case "settings":
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(message.time))
-        throw new Error("Choose a valid time.");
+      if (
+        !Array.isArray(message.times) ||
+        !message.times.length ||
+        !message.times.every((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time))
+      )
+        throw new Error("Choose at least one valid reminder time.");
+      const times = [...new Set(message.times)].sort();
       data.settings = {
         ...data.settings,
         reminders: !!message.reminders,
-        time: message.time,
-        reminderAt: nextReminder(message.time),
+        time: times[0],
+        reminderTimes: times,
+        reminderAt: nextScheduledReminder({ reminderTimes: times }),
       };
       await scheduleReminder(browser, data);
       break;

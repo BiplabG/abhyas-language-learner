@@ -480,7 +480,31 @@ body.practicing .ratings {
   max-width: 130px;
 }
 #home-practice {
+  margin-bottom: 0;
+}
+.home-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   margin-bottom: 12px;
+}
+.label-text {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+}
+#reminder-times {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+.reminder-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reminder-time-row input {
+  margin: 0;
 }
 #session-toolbar {
   justify-content: space-between;

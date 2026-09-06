@@ -2386,7 +2386,7 @@
   function render() {
     if (!data.lists.some((l) => l.id === selected)) selected = data.lists[0].id;
     options($3("#list"), false, selected);
-    options($3("#practice-list"), true);
+    options($3("#practice-list"), true, data.settings.practiceListId || "");
     if (document.activeElement !== $3("#practice-size"))
       $3("#practice-size").value = data.settings.practiceSize || 10;
     $3("#total").textContent = data.words.length;
@@ -2396,11 +2396,10 @@
     $3("#today").textContent = data.reviews.filter(
       (r) => new Date(r.at).toDateString() === (/* @__PURE__ */ new Date()).toDateString()
     ).length;
-    if (document.activeElement !== $3("#time"))
-      $3("#time").value = data.settings.time;
+    renderReminderTimes();
     if (document.activeElement !== $3("#reminders"))
       $3("#reminders").checked = data.settings.reminders;
-    $3("#reminder-status").textContent = data.settings.notificationError ? `Notification error: ${data.settings.notificationError}` : data.settings.reminders && data.settings.reminderAt ? `Next browser reminder: ${new Date(data.settings.reminderAt).toLocaleString()}` : "Daily reminders are off.";
+    $3("#reminder-status").textContent = data.settings.notificationError ? `Notification error: ${data.settings.notificationError}` : data.settings.reminders && data.settings.reminderAt ? `Next browser reminder: ${new Date(data.settings.reminderAt).toLocaleString()} (${(data.settings.reminderTimes || [data.settings.time]).join(", ")} daily)` : "Daily reminders are off.";
     renderWords();
     if (view === "practice") renderReview();
   }
@@ -2591,6 +2590,7 @@
   $3("#practice-list").onchange = () => {
     current = null;
     revealed = false;
+    action({ type: "practiceList", listId: $3("#practice-list").value });
     renderReview();
   };
   $3("nav").onclick = (e) => {
@@ -2647,7 +2647,9 @@
       {
         type: "settings",
         reminders: $3("#reminders").checked,
-        time: $3("#time").value
+        times: [...document.querySelectorAll(".reminder-time")].map(
+          (input) => input.value
+        )
       },
       "Preferences saved."
     );
@@ -2665,8 +2667,8 @@
   };
   $3("#export").onclick = () => download($3("#format").value);
   $3("#backup").onclick = () => download("json", true);
-  $3("#expand").onclick = () => browser.tabs.create({
-    url: browser.runtime.getURL("index.html") + "?full=1"
+  $3("#expand").onclick = () => browser.tabs.create({ url: browser.runtime.getURL("index.html") + "?full=1" }).then(() => {
+    if (!document.body.classList.contains("full")) window.close();
   });
   browser.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.data?.newValue) {
@@ -2764,12 +2766,33 @@
     show("library");
   }
   $3("#end-practice").onclick = endSession;
-  $3("#home-practice").onclick = () => show("practice");
-  $3("#begin-practice").onclick = async () => {
+  $3("#home-practice").onclick = () => beginPractice();
+  $3("#begin-practice").onclick = () => beginPractice();
+  $3("#home-sync").onclick = async () => {
+    const button = $3("#home-sync");
+    button.disabled = true;
+    try {
+      const result = await browser.runtime.sendMessage({ type: "syncNow" });
+      if (result.error) throw new Error(result.error);
+      data = result.data;
+      render();
+      status(
+        result.syncStatus?.message || "Sync finished.",
+        !!result.syncStatus?.error
+      );
+    } catch (e) {
+      status(e.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  };
+  async function beginPractice() {
     const input = $3("#practice-size");
     if (!input.reportValidity()) return;
     const button = $3("#begin-practice");
+    const homeButton = $3("#home-practice");
     button.disabled = true;
+    homeButton.disabled = true;
     try {
       await send({ type: "practiceSize", size: Number(input.value) });
       const list = $3("#practice-list").value;
@@ -2785,14 +2808,47 @@
       sessionCount = 0;
       current = null;
       revealed = false;
+      show("practice");
       renderReview();
       window.scrollTo(0, 0);
     } catch (e) {
       status(e.message, true);
     } finally {
       button.disabled = false;
+      homeButton.disabled = false;
     }
-  };
+  }
+  function reminderInputs() {
+    return [...document.querySelectorAll(".reminder-time")];
+  }
+  function addReminderTime(value = "19:00") {
+    const row = el("div", void 0, "reminder-time-row");
+    const input = document.createElement("input");
+    input.type = "time";
+    input.required = true;
+    input.value = value;
+    input.className = "reminder-time";
+    if (!reminderInputs().length) input.id = "time";
+    const remove = el("button", "Remove", "quiet");
+    remove.type = "button";
+    remove.onclick = () => {
+      if (reminderInputs().length === 1) return;
+      row.remove();
+      reminderInputs()[0].id = "time";
+    };
+    row.append(input, remove);
+    $3("#reminder-times").append(row);
+  }
+  function renderReminderTimes() {
+    if (reminderInputs().some((input) => input === document.activeElement))
+      return;
+    const times = data.settings.reminderTimes || [data.settings.time || "19:00"];
+    if (reminderInputs().map((input) => input.value).join(",") === times.join(","))
+      return;
+    $3("#reminder-times").replaceChildren();
+    times.forEach(addReminderTime);
+  }
+  $3("#add-reminder-time").onclick = () => addReminderTime();
 })();
 /*! Bundled license information:
 

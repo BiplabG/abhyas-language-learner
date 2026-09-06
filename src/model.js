@@ -7,7 +7,13 @@ export function initialState() {
     lists: [{ id: crypto.randomUUID(), name: "My first words" }],
     words: [],
     reviews: [],
-    settings: { reminders: false, time: "19:00" },
+    settings: {
+      reminders: false,
+      time: "19:00",
+      reminderTimes: ["19:00"],
+      practiceSize: 10,
+      practiceListId: "",
+    },
   };
 }
 export function hydrate(card) {

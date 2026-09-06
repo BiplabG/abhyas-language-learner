@@ -64,7 +64,7 @@ function show(name) {
 function render() {
   if (!data.lists.some((l) => l.id === selected)) selected = data.lists[0].id;
   options($("#list"), false, selected);
-  options($("#practice-list"), true);
+  options($("#practice-list"), true, data.settings.practiceListId || "");
   if (document.activeElement !== $("#practice-size"))
     $("#practice-size").value = data.settings.practiceSize || 10;
   $("#total").textContent = data.words.length;
@@ -74,14 +74,13 @@ function render() {
   $("#today").textContent = data.reviews.filter(
     (r) => new Date(r.at).toDateString() === new Date().toDateString(),
   ).length;
-  if (document.activeElement !== $("#time"))
-    $("#time").value = data.settings.time;
+  renderReminderTimes();
   if (document.activeElement !== $("#reminders"))
     $("#reminders").checked = data.settings.reminders;
   $("#reminder-status").textContent = data.settings.notificationError
     ? `Notification error: ${data.settings.notificationError}`
     : data.settings.reminders && data.settings.reminderAt
-      ? `Next browser reminder: ${new Date(data.settings.reminderAt).toLocaleString()}`
+      ? `Next browser reminder: ${new Date(data.settings.reminderAt).toLocaleString()} (${(data.settings.reminderTimes || [data.settings.time]).join(", ")} daily)`
       : "Daily reminders are off.";
   renderWords();
   if (view === "practice") renderReview();
@@ -297,6 +296,7 @@ $("#search").oninput = () => {
 $("#practice-list").onchange = () => {
   current = null;
   revealed = false;
+  action({ type: "practiceList", listId: $("#practice-list").value });
   renderReview();
 };
 $("nav").onclick = (e) => {
@@ -353,7 +353,9 @@ $("#settings-form").onsubmit = (e) => {
     {
       type: "settings",
       reminders: $("#reminders").checked,
-      time: $("#time").value,
+      times: [...document.querySelectorAll(".reminder-time")].map(
+        (input) => input.value,
+      ),
     },
     "Preferences saved.",
   );
@@ -372,9 +374,11 @@ $("#test-notification").onclick = async () => {
 $("#export").onclick = () => download($("#format").value);
 $("#backup").onclick = () => download("json", true);
 $("#expand").onclick = () =>
-  browser.tabs.create({
-    url: browser.runtime.getURL("index.html") + "?full=1",
-  });
+  browser.tabs
+    .create({ url: browser.runtime.getURL("index.html") + "?full=1" })
+    .then(() => {
+      if (!document.body.classList.contains("full")) window.close();
+    });
 browser.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.data?.newValue) {
     data = changes.data.newValue;
@@ -475,12 +479,33 @@ function endSession() {
   show("library");
 }
 $("#end-practice").onclick = endSession;
-$("#home-practice").onclick = () => show("practice");
-$("#begin-practice").onclick = async () => {
+$("#home-practice").onclick = () => beginPractice();
+$("#begin-practice").onclick = () => beginPractice();
+$("#home-sync").onclick = async () => {
+  const button = $("#home-sync");
+  button.disabled = true;
+  try {
+    const result = await browser.runtime.sendMessage({ type: "syncNow" });
+    if (result.error) throw new Error(result.error);
+    data = result.data;
+    render();
+    status(
+      result.syncStatus?.message || "Sync finished.",
+      !!result.syncStatus?.error,
+    );
+  } catch (e) {
+    status(e.message, true);
+  } finally {
+    button.disabled = false;
+  }
+};
+async function beginPractice() {
   const input = $("#practice-size");
   if (!input.reportValidity()) return;
   const button = $("#begin-practice");
+  const homeButton = $("#home-practice");
   button.disabled = true;
+  homeButton.disabled = true;
   try {
     await send({ type: "practiceSize", size: Number(input.value) });
     const list = $("#practice-list").value;
@@ -499,11 +524,49 @@ $("#begin-practice").onclick = async () => {
     sessionCount = 0;
     current = null;
     revealed = false;
+    show("practice");
     renderReview();
     window.scrollTo(0, 0);
   } catch (e) {
     status(e.message, true);
   } finally {
     button.disabled = false;
+    homeButton.disabled = false;
   }
-};
+}
+
+function reminderInputs() {
+  return [...document.querySelectorAll(".reminder-time")];
+}
+function addReminderTime(value = "19:00") {
+  const row = el("div", undefined, "reminder-time-row");
+  const input = document.createElement("input");
+  input.type = "time";
+  input.required = true;
+  input.value = value;
+  input.className = "reminder-time";
+  if (!reminderInputs().length) input.id = "time";
+  const remove = el("button", "Remove", "quiet");
+  remove.type = "button";
+  remove.onclick = () => {
+    if (reminderInputs().length === 1) return;
+    row.remove();
+    reminderInputs()[0].id = "time";
+  };
+  row.append(input, remove);
+  $("#reminder-times").append(row);
+}
+function renderReminderTimes() {
+  if (reminderInputs().some((input) => input === document.activeElement))
+    return;
+  const times = data.settings.reminderTimes || [data.settings.time || "19:00"];
+  if (
+    reminderInputs()
+      .map((input) => input.value)
+      .join(",") === times.join(",")
+  )
+    return;
+  $("#reminder-times").replaceChildren();
+  times.forEach(addReminderTime);
+}
+$("#add-reminder-time").onclick = () => addReminderTime();

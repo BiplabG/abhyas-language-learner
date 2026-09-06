@@ -71,5 +71,8 @@ revoke all on function public.abhyas_token_exchange(text, bigint, uuid, jsonb)
 grant execute on function public.abhyas_token_exchange(text, bigint, uuid, jsonb)
   to anon;
 
+-- Make the new or replaced RPC visible to PostgREST immediately.
+notify pgrst, 'reload schema';
+
 -- Disable the previous authenticated-user RPC if an earlier setup was used.
 drop function if exists public.abhyas_exchange(bigint, uuid, jsonb);
