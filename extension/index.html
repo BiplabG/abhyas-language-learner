@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>abhyas - language learner</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="icons/book.svg" alt="" width="38" height="38" />
+        <div>
+          <strong>abhyas - language learner</strong
+          ><small>A few words. A little every day.</small>
+        </div>
+      </div>
+      <button id="expand" class="quiet" title="Open in a full tab">
+        ↗ Full view
+      </button>
+    </header>
+    <main>
+      <section class="intro">
+        <span class="eyebrow">YOUR DAILY WORD GARDEN</span>
+        <h1>Make new words<br />feel familiar.</h1>
+        <p>Collect what catches your eye. Remember what matters.</p>
+      </section>
+      <section class="stats" aria-label="Learning progress">
+        <div><strong id="total">0</strong><span>words collected</span></div>
+        <div><strong id="due">0</strong><span>ready to practice</span></div>
+        <div><strong id="today">0</strong><span>reviews today</span></div>
+      </section>
+      <nav aria-label="Main navigation">
+        <button data-view="library" class="active">Word lists</button
+        ><button data-view="practice">Practice</button
+        ><button data-view="settings">Settings</button>
+      </nav>
+      <div id="status" role="status" aria-live="polite"></div>
+      <section id="library" class="view">
+        <button id="home-practice">Start practice</button>
+        <div class="toolbar">
+          <label class="grow">Your list<select id="list"></select></label
+          ><button id="new-list" class="quiet">+ List</button
+          ><button id="rename-list" class="quiet">Rename</button
+          ><button id="delete-list" class="quiet danger">Delete list</button>
+        </div>
+        <div class="toolbar">
+          <input
+            id="search"
+            type="search"
+            placeholder="Find a word or translation…"
+            aria-label="Search words"
+          /><button id="add">+ Add word</button>
+        </div>
+        <p class="muted storage-note">
+          Saved automatically in this browser, including after restart.
+        </p>
+        <button id="import-open" class="quiet">Import words / Anki deck</button>
+        <div id="words"></div>
+        <div class="export">
+          <label
+            >Export this list<select id="format">
+              <option value="json">JSON backup</option>
+              <option value="csv">CSV spreadsheet</option>
+              <option value="anki">Anki text</option>
+            </select></label
+          ><button id="export" class="quiet">Download</button>
+        </div>
+      </section>
+      <section id="practice" class="view" hidden>
+        <div id="practice-setup">
+          <h2>A little practice, your way</h2>
+          <div class="toolbar">
+            <label class="grow"
+              >Practice from<select id="practice-list">
+                <option value="">All lists</option>
+              </select></label
+            >
+            <label
+              >Words per session<input
+                id="practice-size"
+                type="number"
+                min="1"
+                max="100"
+                value="10"
+                required
+            /></label>
+          </div>
+          <button id="begin-practice">Begin session</button>
+          <p class="muted">
+            Review each selected word once. FSRS schedules the next review from
+            your rating.
+          </p>
+        </div>
+        <div id="session-toolbar" class="toolbar" hidden>
+          <button id="end-practice" class="quiet">End session</button
+          ><span id="session-count" role="status"></span>
+        </div>
+        <div id="practice-metrics" aria-label="Practice metrics"></div>
+        <div id="review"></div>
+      </section>
+      <section id="settings" class="view" hidden>
+        <h2>Your daily rhythm</h2>
+        <p class="muted">
+          A daily Firefox browser notification, even when you are caught up.
+          Firefox must be running; notification permissions in your operating
+          system also apply.
+        </p>
+        <form id="settings-form">
+          <label class="check"
+            ><input id="reminders" type="checkbox" />Enable daily
+            reminders</label
+          ><label
+            >Local reminder time<input id="time" type="time" required /></label
+          ><button type="submit">Save preferences</button>
+        </form>
+        <p id="reminder-status" class="muted" role="status"></p>
+        <button id="test-notification" class="quiet">
+          Test browser notification
+        </button>
+        <p class="muted">
+          If the test does not appear, allow Firefox notifications in your
+          operating system and turn off Do Not Disturb / Focus. A missed
+          reminder is sent once when the extension starts again.
+        </p>
+        <hr />
+        <h2>Sync with Supabase</h2>
+        <p class="muted">
+          Optional: sync your lists, words, and practice history across devices
+          that share a private token. The newer version replaces the older one;
+          changes are not merged. Reminder preferences stay on each device.
+        </p>
+        <button id="sync-setup-tab" class="quiet" hidden>
+          Configure sync in full view
+        </button>
+        <div id="sync-login" hidden>
+          <p class="muted">
+            First run the latest supabase/setup.sql in your project's SQL
+            Editor. Enter the same sync token on every device. The token is the
+            private credential for this collection.
+          </p>
+          <form id="sync-form">
+            <label
+              >Supabase project URL<input
+                id="sync-url"
+                type="url"
+                required
+                placeholder="https://your-project.supabase.co"
+                autocomplete="off"
+            /></label>
+            <label
+              >Publishable key (or legacy anon key)<input
+                id="sync-key"
+                required
+                autocomplete="off"
+                placeholder="sb_publishable_…"
+            /></label>
+            <label
+              >Private sync token<input
+                id="sync-token"
+                type="password"
+                required
+                minlength="43"
+                maxlength="128"
+                pattern="[A-Za-z0-9_-]{43,128}"
+                autocomplete="off"
+                placeholder="Generate a token or enter an existing one"
+            /></label>
+            <div class="toolbar">
+              <button id="sync-generate" type="button" class="quiet">
+                Generate token
+              </button>
+              <button id="sync-token-toggle" type="button" class="quiet">
+                Show / hide
+              </button>
+              <button id="sync-token-copy" type="button" class="quiet">
+                Copy token
+              </button>
+            </div>
+            <p class="muted">
+              Generate a cryptographically random token, save it in a password
+              manager, and reuse it on other devices. Supabase stores only its
+              SHA-256 hash. Anyone with the token can read and replace this sync
+              data. Never enter a service-role or secret key.
+            </p>
+            <button id="sync-connect" type="submit">Connect and sync</button>
+          </form>
+        </div>
+        <div id="sync-connected" hidden>
+          <p id="sync-account"></p>
+          <label
+            >Saved sync token<input
+              id="sync-saved-token"
+              type="password"
+              readonly
+              placeholder="Hidden"
+          /></label>
+          <div class="toolbar">
+            <button id="sync-show-saved" class="quiet">Show token</button>
+            <button id="sync-copy-saved" class="quiet">Copy token</button>
+          </div>
+          <button id="sync-now">Sync now</button>
+          <button id="sync-disconnect" class="quiet">Disconnect</button>
+        </div>
+        <p id="sync-status" role="status" class="muted"></p>
+        <button id="sync-recovery" class="quiet">
+          Export local copy from before last pull
+        </button>
+        <hr />
+        <h2>Yours, on this device</h2>
+        <p class="muted">
+          Words and learning history are saved automatically in persistent
+          browser storage, surviving closed tabs and browser restarts. They stay
+          in this Firefox profile until you delete them, clear extension data,
+          or uninstall. Export regularly before removing the extension or
+          switching profiles.
+        </p>
+        <button id="backup" class="quiet">Download all data (JSON)</button>
+        <p class="muted">
+          FSRS schedules each word using your recall ratings. Again means you
+          forgot; Good means you recalled it with normal effort.
+        </p>
+      </section>
+    </main>
+    <dialog id="word-dialog">
+      <form id="word-form">
+        <div class="dialog-head">
+          <h2 id="form-title">Plant a new word</h2>
+          <button
+            type="button"
+            id="close-dialog"
+            class="quiet"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <input id="word-id" type="hidden" /><label
+          >Word or phrase<input
+            id="word"
+            required
+            maxlength="500"
+            autocomplete="off" /></label
+        ><label
+          >English translation<input
+            id="translation"
+            required
+            maxlength="1000"
+            autocomplete="off" /></label
+        ><label
+          >Details <span class="muted">· optional</span
+          ><textarea
+            id="details"
+            rows="3"
+            maxlength="10000"
+            placeholder="An example sentence, pronunciation, or a memory cue"
+          ></textarea></label
+        ><label>Word list<select id="word-list"></select></label>
+        <p id="form-error" role="alert"></p>
+        <button type="submit">Save word</button>
+      </form>
+    </dialog>
+    <dialog id="import-dialog">
+      <form id="import-form">
+        <div class="dialog-head">
+          <h2>Bring your words along</h2>
+          <button
+            id="import-close"
+            type="button"
+            class="quiet"
+            aria-label="Close import"
+          >
+            ✕
+          </button>
+        </div>
+        <label
+          >Import file<input
+            id="import-file"
+            type="file"
+            accept=".json,.csv,.txt,.tsv,.apkg"
+        /></label>
+        <p id="import-info" class="muted"></p>
+        <p id="import-backup" hidden>
+          Restore all lists, word schedules, and review history as new copies.
+          Your current words and preferences stay as they are.
+        </p>
+        <div id="import-mapping" hidden>
+          <label
+            >Source deck / note type / list<select id="import-group"></select
+          ></label>
+          <label>New list name<input id="import-name" maxlength="200" /></label>
+          <label>Word field<select id="map-word"></select></label>
+          <label
+            >English translation field<select id="map-translation"></select
+          ></label>
+          <fieldset>
+            <legend>Details fields · choose any number</legend>
+            <div id="map-details"></div>
+          </fieldset>
+          <label class="check"
+            ><input id="import-html" type="checkbox" />Convert Anki HTML to
+            plain text</label
+          >
+          <p class="muted">
+            Selected details fields are combined into one details entry. Anki
+            media and card templates are not imported; words start with a fresh
+            practice schedule.
+          </p>
+          <p id="import-summary"></p>
+          <div id="import-preview" aria-label="Import preview"></div>
+        </div>
+        <p id="import-error" role="alert"></p>
+        <button id="import-confirm" type="submit" disabled>
+          Import into new lists
+        </button>
+      </form>
+    </dialog>
+    <script src="app.js"></script>
+  </body>
+</html>

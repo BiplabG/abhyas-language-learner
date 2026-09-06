@@ -1,0 +1,12 @@
+node_modules/
+artifacts/
+test-results/
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Supabase CLI local runtime state
+supabase/.branches/
+supabase/.temp/
