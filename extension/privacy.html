@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy notice — abhyas</title>
+  <link rel="stylesheet" href="privacy.css" />
+</head>
+<body>
+<main>
+  <h1>Privacy notice</h1>
+  <p>abhyas - language learner · Updated 6 September 2026</p>
+  <h2>Local use</h2>
+  <p>Your word lists, translations, notes, practice schedules, review history and preferences are stored in your Firefox profile. Imports are processed on your device. The extension has no analytics, advertising, tracking, automatic translation or developer-operated data server. It does not collect browsing history or page URLs. The context menu copies only the text you select into a form; you choose whether to save it.</p>
+  <h2>Optional sync</h2>
+  <p>Sync is off by default. When you configure a Supabase project and grant permission, the extension sends your lists, words, translations, notes, schedules and review history to that project over HTTPS. Requests also send the project's publishable key, your private sync token and a revision identifier. The server necessarily receives connection information such as your IP address. Hosting logs and retention depend on your project and hosting provider.</p>
+  <p>The token and project settings are saved in this Firefox profile. The database function stores a SHA-256 hash of the token with the remote snapshot, not the plaintext token. Anyone with your token and project details can read or replace the snapshot. Data is not end-to-end encrypted; the project's administrators and hosting provider can access it. The extension developer does not receive this data through the extension.</p>
+  <p>While connected, sync runs on startup, periodically and after vocabulary or practice changes. Reminder preferences stay on the device. Each newer snapshot replaces the older one without merging. One local recovery copy is kept before a remote snapshot replaces local data.</p>
+  <h2>Your controls and deletion</h2>
+  <p>Use Disconnect in Settings to stop syncing and remove saved connection credentials. This keeps both local and remote vocabulary. Remove remote snapshots in your Supabase project's database; disconnecting or uninstalling does not delete them. Your provider may retain backups or logs under its own settings.</p>
+  <p>You can edit or delete words and lists, and export JSON backups. Deleting a word does not erase its historical review log or earlier exports, recovery copies or provider backups. Removing the extension or clearing its data removes its browser storage. Delete downloaded exports separately if you no longer want them. Export anything you want to keep before removing the extension.</p>
+  <h2>Permissions</h2>
+  <ul>
+    <li>Storage and unlimited storage: keep vocabulary and imported decks locally.</li>
+    <li>Context menus: offer a command for selected text.</li>
+    <li>Alarms and notifications: schedule reminders and optional sync, and show practice notifications.</li>
+    <li>Optional Supabase website access and data permissions: send sync credentials and vocabulary only after you connect.</li>
+  </ul>
+  <p>For support, use the contact or support options on this extension's Firefox Add-ons listing. Questions about a configured Supabase project should go to its administrator.</p>
+</main>
+</body>
+</html>

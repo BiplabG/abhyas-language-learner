@@ -12,6 +12,8 @@ import {
   snapshot,
 } from "../src/sync.js";
 import { createSyncService } from "../src/sync-service.js";
+// Materialize Node 22's lazy fetch accessor before node:test mocks it.
+globalThis.fetch = globalThis.fetch;
 const userId = "11111111-1111-4111-8111-111111111111";
 const config = {
   url: "https://test-project.supabase.co",

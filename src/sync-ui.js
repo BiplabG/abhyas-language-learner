@@ -7,6 +7,10 @@ const $ = (s) => document.querySelector(s);
 export function setupSyncUI() {
   function render(info) {
     if (!info) return;
+    if (!info.connected) {
+      $("#sync-saved-token").value = "";
+      $("#sync-saved-token").type = "password";
+    }
     $("#sync-status").textContent =
       info.message +
       (info.lastSync
@@ -74,6 +78,7 @@ export function setupSyncUI() {
         token,
       });
       $("#sync-token").value = "";
+      $("#sync-token").type = "password";
     } catch (e) {
       $("#sync-status").textContent = e.message;
     } finally {

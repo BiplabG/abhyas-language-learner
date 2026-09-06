@@ -303,7 +303,7 @@ try {
   assert.equal(await page.locator("#words .word-card").count(), 20);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Word lists", exact: true }).click();
-  await page.locator("#home-practice").click();
+  await page.getByRole("button", { name: "Practice", exact: true }).click();
   await page.locator("#practice-list").selectOption({ label: "Pagination" });
   await page.locator("#practice-size").fill("2");
   await page.locator("#begin-practice").click();
@@ -316,6 +316,10 @@ try {
     path: "artifacts/focused-practice.png",
     fullPage: true,
   });
+  await page.locator("#end-practice").click();
+  await page.locator("#home-practice").click();
+  await page.getByRole("button", { name: "Show answer" }).waitFor();
+  assert.match(await page.locator("#session-count").textContent(), /2 remaining/);
   await page.locator("#end-practice").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   let remote = null;
@@ -402,6 +406,11 @@ try {
     ),
     undefined,
   );
+  assert.equal(await page.locator("#sync-saved-token").inputValue(), "");
+  assert.equal(await page.locator("#sync-saved-token").getAttribute("type"), "password");
+  assert.equal(await page.locator("#sync-token").getAttribute("type"), "password");
+  const privacyLink = page.getByRole("link", { name: "Privacy notice" });
+  assert.equal(await privacyLink.getAttribute("href"), "privacy.html");
   assert.deepEqual(errors, []);
   console.log(
     "UI passed: CRUD, FSRS, metrics, storage reload, reminders, export, capture, imports, shared-token Supabase sync/pull/recovery/disconnect; no page errors.",

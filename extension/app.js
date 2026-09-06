@@ -1952,6 +1952,10 @@
   function setupSyncUI() {
     function render2(info) {
       if (!info) return;
+      if (!info.connected) {
+        $("#sync-saved-token").value = "";
+        $("#sync-saved-token").type = "password";
+      }
       $("#sync-status").textContent = info.message + (info.lastSync ? ` Last synced: ${new Date(info.lastSync).toLocaleString()}` : "");
       $("#sync-status").classList.toggle("error", !!info.error);
       $("#sync-connected").hidden = !info.connected;
@@ -2008,6 +2012,7 @@
           token
         });
         $("#sync-token").value = "";
+        $("#sync-token").type = "password";
       } catch (e2) {
         $("#sync-status").textContent = e2.message;
       } finally {

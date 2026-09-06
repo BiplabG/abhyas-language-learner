@@ -1,6 +1,12 @@
 # abhyas - language learner
 
-A local Firefox extension for collecting vocabulary and practicing with FSRS. No account, Python server, API key, or network connection is needed for local use. Optional Supabase sync requires your project URL, publishable key, and a private shared sync token. Translations are entered manually.
+A Firefox extension for collecting vocabulary and practicing with FSRS. No account, Python server, API key, or network connection is needed for local use. Optional Supabase sync requires your project URL, publishable key, and a private shared sync token. Translations are entered manually.
+
+## Publish a release
+
+Run `npm ci` and `npm run release` with Node 22 to validate the app and generate the unsigned extension ZIP, reviewer source ZIP and SHA-256 checksums in `artifacts/`. Browser tests require Google Chrome on macOS or Playwright Chromium (`npx playwright install chromium`) elsewhere.
+
+See [the release guide](docs/RELEASE.md) for store listing copy, reviewer instructions, final Firefox checks and Mozilla submission steps. The bundled [privacy notice](extension/privacy.html) is also available from Settings. Publishing and permanent installation require Mozilla signing.
 
 ## Load it now
 
@@ -66,6 +72,7 @@ npm run package
 `npm run package` writes `artifacts/abhyas_-_language_learner-1.3.0.zip`. Only `extension/` is packaged, with the FSRS library bundled locally. Source lives in `src/`; rebuild after editing it, then click **Reload** in Firefox's debugging page.
 
 ```sh
+npm run build
 npm run test:ui
 ```
 
